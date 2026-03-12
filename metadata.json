@@ -1,0 +1,5 @@
+{
+  "name": "PanoVid AI",
+  "description": "AI-powered corporate video generator from panoramic images.",
+  "requestFramePermissions": []
+}
