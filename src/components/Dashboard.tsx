@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Video, Image as ImageIcon, Wand2, History, 
-  LogOut, Crown, Zap, Play, Edit3, Film, ArrowUp, Plus, X, RefreshCw, MoreHorizontal, Cloud
+  LogOut, Crown, Zap, Play, Edit3, Film, ArrowUp, Plus, X, RefreshCw, MoreHorizontal, Cloud, MonitorUp
 } from 'lucide-react';
 import { useAppContext } from '../AppContext';
 import { VideoTask } from '../types';
@@ -11,6 +11,7 @@ import CloudAssetModal from './CloudAssetModal';
 const MODELS = ['Seedance 2.0 Fast', '可灵 (Kling)', '豆包 (Doubao)', 'Veo', 'Sora'];
 const RATIOS = ['16:9', '9:16', '21:9', '4:3', '1:1', '3:4'];
 const DURATIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const RESOLUTIONS = ['720P', '1080P'];
 
 export default function Dashboard() {
   const { user, setUser, setView, tasks, addTask, updateTask, setEditorVideo } = useAppContext();
@@ -19,12 +20,14 @@ export default function Dashboard() {
   const [mode, setMode] = useState<'first_last' | 'multi' | 'agent'>('first_last');
   const [ratio, setRatio] = useState('16:9');
   const [duration, setDuration] = useState(5);
+  const [resolution, setResolution] = useState('720P');
   const [prompt, setPrompt] = useState('');
   const [images, setImages] = useState<string[]>([]);
   
   const [showMention, setShowMention] = useState(false);
   const [uploadTarget, setUploadTarget] = useState<number | 'general' | null>(null);
   const [showCloudModal, setShowCloudModal] = useState(false);
+  const [showVipModal, setShowVipModal] = useState(false);
   const [storyboard, setStoryboard] = useState<{duration: number, prompt: string}[]>([{ duration: 2, prompt: '' }]);
   const [isStoryboardMode, setIsStoryboardMode] = useState(false);
 
@@ -74,7 +77,7 @@ export default function Dashboard() {
       progress: 0,
       model,
       duration,
-      resolution: '720p',
+      resolution,
       ratio,
       mode,
       createdAt: Date.now(),
@@ -319,6 +322,21 @@ export default function Dashboard() {
                     >
                       <Film className="w-3.5 h-3.5" /> 去剪辑
                     </button>
+                    {task.resolution !== '1080P' && (
+                      <button 
+                        onClick={() => {
+                          if (!user?.isVip) {
+                            setShowVipModal(true);
+                            return;
+                          }
+                          updateTask(task.id, { resolution: '1080P' });
+                          alert('已提交转高清任务');
+                        }}
+                        className="px-4 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs font-medium hover:bg-zinc-800 flex items-center gap-2 transition-colors"
+                      >
+                        <MonitorUp className="w-3.5 h-3.5" /> 转高清
+                      </button>
+                    )}
                     <button className="px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs font-medium hover:bg-zinc-800 flex items-center gap-2 transition-colors">
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
@@ -488,6 +506,19 @@ export default function Dashboard() {
                     <select value={duration} onChange={e => setDuration(Number(e.target.value))} className="bg-zinc-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs focus:outline-none hover:bg-zinc-800 transition-colors cursor-pointer">
                       {DURATIONS.map(d => <option key={d} value={d}>{d}s</option>)}
                     </select>
+                    <select 
+                      value={resolution} 
+                      onChange={e => {
+                        if (e.target.value === '1080P' && !user?.isVip) {
+                          setShowVipModal(true);
+                          return;
+                        }
+                        setResolution(e.target.value);
+                      }} 
+                      className="bg-zinc-950 border border-white/10 rounded-lg px-3 py-1.5 text-xs focus:outline-none hover:bg-zinc-800 transition-colors cursor-pointer"
+                    >
+                      {RESOLUTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
                     <button 
                       onClick={() => {
                         setPrompt(prev => prev + '@');
@@ -527,6 +558,55 @@ export default function Dashboard() {
         }} 
         onSelect={handleCloudSelect} 
       />
+
+      {/* VIP Modal */}
+      <AnimatePresence>
+        {showVipModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowVipModal(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-zinc-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 text-center">
+                <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Crown className="w-8 h-8 text-amber-400" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">开通会员解锁 1080P 高清画质</h3>
+                <p className="text-zinc-400 text-sm mb-6">
+                  普通用户最高支持 720P 视频生成。升级会员即可享受 1080P 超清画质，以及更多专属特权。
+                </p>
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => {
+                      setUser(prev => prev ? { ...prev, isVip: true } : null);
+                      setShowVipModal(false);
+                      alert('模拟开通会员成功！');
+                    }}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg shadow-amber-500/20"
+                  >
+                    立即开通会员
+                  </button>
+                  <button 
+                    onClick={() => setShowVipModal(false)}
+                    className="w-full py-3 rounded-xl bg-zinc-800 text-zinc-300 font-medium hover:bg-zinc-700 transition-colors"
+                  >
+                    暂不需要
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
